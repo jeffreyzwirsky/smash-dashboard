@@ -7,6 +7,7 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Request interceptor to add JWT token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -18,6 +19,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor for token refresh and error handling
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -41,14 +43,14 @@ api.interceptors.response.use(
     
     if (error.response?.status === 403) {
       console.error('Permission denied. Check your role and authentication.');
-      localStorage.clear();
-      window.location.href = '/login';
+      // Don't auto-logout on 403, just log the error
     }
     
     return Promise.reject(error);
   }
 );
 
+// Authentication API
 export const authAPI = {
   login: async (username: string, password: string) => {
     const response = await api.post('/auth/login/', { username, password });
@@ -62,15 +64,18 @@ export const authAPI = {
     localStorage.clear();
     window.location.href = '/login';
   },
-  getCurrentUser: async () => (await api.get('/users/me/')).data,
+  getCurrentUser: async () => (await api.get('/auth/user/')).data,
 };
 
+// Box API
 export const boxesAPI = {
   getAll: async () => (await api.get('/boxes/')).data,
   getById: async (id: number) => (await api.get(`/boxes/${id}/`)).data,
   create: async (data: any) => (await api.post('/boxes/', data)).data,
   update: async (id: number, data: any) => (await api.patch(`/boxes/${id}/`, data)).data,
+  delete: async (id: number) => await api.delete(`/boxes/${id}/`),
   finalize: async (id: number) => (await api.post(`/boxes/${id}/finalize/`)).data,
+  unfinalize: async (id: number) => (await api.post(`/boxes/${id}/unfinalize/`)).data,
   uploadPhoto: async (id: number, photoField: string, file: File) => {
     const formData = new FormData();
     formData.append(photoField, file);
@@ -81,24 +86,44 @@ export const boxesAPI = {
   },
 };
 
+// Part API
 export const partsAPI = {
   getAll: async () => (await api.get('/parts/')).data,
+  getByBox: async (boxId: number) => (await api.get(`/parts/?box=${boxId}`)).data,
+  getById: async (id: number) => (await api.get(`/parts/${id}/`)).data,
   create: async (data: any) => (await api.post('/parts/', data)).data,
   update: async (id: number, data: any) => (await api.patch(`/parts/${id}/`, data)).data,
   delete: async (id: number) => await api.delete(`/parts/${id}/`),
+  uploadPhoto: async (id: number, photoField: string, file: File) => {
+    const formData = new FormData();
+    formData.append(photoField, file);
+    const response = await api.patch(`/parts/${id}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
+// Sale API
 export const salesAPI = {
   getAll: async () => (await api.get('/sales/')).data,
   getById: async (id: number) => (await api.get(`/sales/${id}/`)).data,
   create: async (data: any) => (await api.post('/sales/', data)).data,
+  update: async (id: number, data: any) => (await api.patch(`/sales/${id}/`, data)).data,
+  delete: async (id: number) => await api.delete(`/sales/${id}/`),
   publish: async (id: number) => (await api.post(`/sales/${id}/publish/`)).data,
+  close: async (id: number) => (await api.post(`/sales/${id}/close/`)).data,
   getBids: async (id: number) => (await api.get(`/sales/${id}/bids/`)).data,
+  getMarketplace: async () => (await api.get('/sales/marketplace/')).data,
 };
 
+// Bid API
 export const bidsAPI = {
-  getMyBids: async () => (await api.get('/bids/my-bids/')).data,
+  getAll: async () => (await api.get('/bids/')).data,
+  getMyBids: async () => (await api.get('/bids/my_bids/')).data,
+  getById: async (id: number) => (await api.get(`/bids/${id}/`)).data,
   create: async (data: any) => (await api.post('/bids/', data)).data,
-  approve: async (id: number) => (await api.patch(`/bids/${id}/approve/`)).data,
-  decline: async (id: number) => (await api.patch(`/bids/${id}/decline/`)).data,
+  update: async (id: number, data: any) => (await api.patch(`/bids/${id}/`, data)).data,
+  accept: async (id: number) => (await api.post(`/bids/${id}/accept/`)).data,
+  reject: async (id: number) => (await api.post(`/bids/${id}/reject/`)).data,
 };
